@@ -1,91 +1,107 @@
 # ChatServer
 
-`ChatServer` est un backend FastAPI léger conçu pour la transcription audio en texte, utilisant le modèle OpenAI Whisper. Il est optimisé pour gérer les requêtes de transcription de manière asynchrone.
+`ChatServer` is a lightweight FastAPI backend designed for audio-to-text transcription, utilizing the OpenAI Whisper model. It is optimized to handle transcription requests asynchronously.
 
-## Fonctionnalités
+## Features
 
-*   **Transcription Audio :** Convertit les fichiers audio (format WEBM) en texte.
-*   **Support Multilingue :** Permet de spécifier la langue de l'audio pour une transcription précise.
-*   **Traitement Asynchrone :** Utilise `fastapi.concurrency.run_in_threadpool` pour décharger les opérations de transcription gourmandes en ressources vers un pool de threads séparé.
-*   **Gestion des Fichiers Temporaires :** Nettoyage automatique des fichiers audio temporaires (`.webm` et `.wav`) après transcription.
+*   **Audio Transcription:** Converts audio files (WEBM format) into text.
+*   **Multilingual Support:** Allows specifying the audio language for accurate transcription.
+*   **Asynchronous Processing:** Uses `fastapi.concurrency.run_in_threadpool` to offload resource-intensive transcription operations to a separate thread pool.
+*   **Temporary File Management:** Automatically cleans up temporary audio files (`.webm` and `.wav`) after transcription.
 
-## Technologies Utilisées
+## Technologies Used
 
 *   **Python**
-*   **FastAPI :** Framework web pour construire l'API.
-*   **Uvicorn :** Serveur ASGI pour exécuter l'application FastAPI.
-*   **OpenAI Whisper :** Modèle de reconnaissance vocale pour la transcription.
-*   **FFmpeg :** Outil de ligne de commande pour la conversion de formats audio.
+*   **FastAPI:** Web framework for building the API.
+*   **Uvicorn:** ASGI server to run the FastAPI application.
+*   **OpenAI Whisper:** Speech recognition model for transcription.
+*   **FFmpeg:** Command-line tool for converting audio formats.
 
-## Prérequis
+## Prerequisites
 
-Avant de démarrer le serveur, assurez-vous d'avoir les éléments suivants installés :
+Before starting the server, ensure you have the following installed:
 
 *   **Python 3.9+**
-*   **FFmpeg :** `brew install ffmpeg`
+*   **FFmpeg:** `brew install ffmpeg`
 
-## Installation et Démarrage
+## Installation and Startup
 
-Suivez ces étapes pour configurer et lancer le serveur :
+Follow these steps to set up and launch the server:
 
-1.  **Naviguez vers le répertoire du projet :**
+1.  **Navigate to the project directory:**
     ```bash
     cd ./ChatServer
     ```
 
-2.  **Créez et activez un environnement virtuel :**
+2.  **Create and activate a virtual environment:**
     ```bash
     python3 -m venv .venv
     source .venv/bin/activate
     ```
 
-3.  **Installez les dépendances Python :**
+3.  **Install Python dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
-    *(Note : Lors de la première exécution, le modèle Whisper (`large-v3-turbo`) sera automatiquement téléchargé et mis en cache dans `~/.cache/whisper/`.)*
+    *(Note: On the first run, the Whisper model (`large-v3-turbo`) will be automatically downloaded and cached in `~/.cache/whisper/`.)*
 
-4.  **Démarrez le serveur Uvicorn :**
+4.  **Start the Uvicorn server:**
     ```bash
-    uvicorn app.main:app --reload
+    uvicorn app.main:app --host 0.0.0.0 --reload
     ```
-    Le serveur sera accessible à `http://127.0.0.1:8000` (ou un autre port si spécifié par Uvicorn).
+    The server will be accessible at `http://127.0.0.1:8000` (or another port if specified by Uvicorn).
 
-## Utilisation de l'API
+## API Usage
 
-Le serveur expose un endpoint unique pour la transcription :
+The server exposes a single endpoint for transcription:
 
 ### `POST /transcribe`
 
-*   **Description :** Transcrit un fichier audio en texte.
-*   **Méthode :** `POST`
-*   **URL :** `http://127.0.0.1:8000/transcribe`
-*   **Paramètres de formulaire (`multipart/form-data`) :**
-    *   `file` (type `File`) : Le fichier audio à transcrire (ex: `.webm`, `.m4a`, `.wav`).
-    *   `language` (type `Form`, `string`) : La langue de l'audio (ex: `"french"`, `"english"`, `"fr"`, `"en"`).
+*   **Description:** Transcribes an audio file into text.
+*   **Method:** `POST`
+*   **URL:** `http://127.0.0.1:8000/transcribe`
+*   **Form parameters (`multipart/form-data`):
+    *   `file` (type `File`): The audio file to transcribe (e.g., `.webm`, `.m4a`, `.wav`).
+    *   `language` (type `Form`, `string`): The language of the audio (e.g., `"french"`, `"english"`, `"fr"`, `"en"`).
 
-#### Exemple avec `curl` :
+#### Example with `curl`:
 
 ```bash
 curl -X POST \
   -F "file=@/path/to/your/audio.webm" \
-  -F "language=french" \
+  -F "language=english" \
   http://127.0.0.1:8000/transcribe
 ```
 
-#### Réponse attendue (JSON) :
+#### Expected response (JSON):
 
 ```json
 {
-  "transcript": "Ceci est un exemple de texte transcrit."
+  "transcript": "This is an example of transcribed text."
 }
 ```
 
-## Configuration du Modèle Whisper
+## Whisper Model Configuration
 
-Le modèle Whisper utilisé est `large-v3`. Vous pouvez le modifier dans `app/whisper_utils.py` si vous souhaitez utiliser un modèle plus petit (ex: `"medium"`, `"base"`) pour des performances plus rapides, ou si vous rencontrez des problèmes de mémoire.
+The Whisper model used is `large-v3`. You can change it in `app/whisper_utils.py` if you want to use a smaller model (e.g., `"medium"`, `"base"`) for faster performance, or if you encounter memory issues.
 
 ```python
 # app/whisper_utils.py
 MODEL = whisper.load_model("large-v3") # Change "large-v3" to "medium" or "base" if needed
+```
+
+## Docker Container Information
+
+The size of the Docker image depends on the Whisper model selected in `app/whisper_utils.py`:
+
+*   If `MODEL_NAME = "large-v3-turbo"` is selected, the image size is approximately **4.92 GB**.
+*   If `MODEL_NAME = "tiny"` is selected, the image size is approximately **1.97 GB**.
+
+### Building the Docker Image
+
+To build & run the Docker image for the ChatServer, navigate to the `ChatServer` directory and run the following command:
+
+```bash
+docker build -t chatserver .
+docker run -d -p 8000:8000 --name chatserver-container chatserver
 ```
