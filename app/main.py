@@ -11,6 +11,10 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+@app.get("/")
+async def health_check():
+    return {"success": True}
+
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), language: str = Form(...)) -> dict[str, Any]:
     webm = os.path.join(UPLOAD_DIR, f"{uuid.uuid4().hex}.webm")
