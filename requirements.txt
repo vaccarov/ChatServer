@@ -1,5 +1,8 @@
 fastapi
 uvicorn[standard]
-pydub
 openai-whisper
-python-multipart
+# pydub
+python-multipart # Form data requires "python-multipart" to be installed. 
+diffusers
+transformers
+accelerate

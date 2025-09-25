@@ -1,4 +1,6 @@
 .venv/
 uploads/
+images/
 __pycache__/
 .DS_Store
+.vscode/
