@@ -1,6 +1,7 @@
 import whisper
 import subprocess
 import os
+from typing import Optional
 
 # ┌───────────────┬────────────┬────────────────────────┬──────────────────┐
 # │ Nom du modèle │ Paramètres │ VRAM requise (approx.) │ Vitesse relative │
@@ -13,7 +14,17 @@ import os
 # └───────────────┴────────────┴────────────────────────┴──────────────────┘
 MODEL_NAME = "large-v3-turbo"
 # ~/.cache/whisper/MODEL_NAME.pt
-MODEL = whisper.load_model(MODEL_NAME)
+MODEL: Optional["whisper.Whisper"] = None
+
+def get_model() -> "whisper.Whisper":
+    """
+    Loads the Whisper model if it hasn't been loaded yet, and returns the model.
+    """
+    global MODEL
+    if MODEL is None:
+        MODEL = whisper.load_model(MODEL_NAME)
+    return MODEL
+
 
 def convert_webm_to_wav(webm_path: str, wav_path: str) -> None:
     subprocess.run([
@@ -24,8 +35,11 @@ def process_audio(webm_path: str, language: str) -> str:
     wav_path = webm_path.replace(".webm", ".wav")
     try:
         convert_webm_to_wav(webm_path, wav_path)
-        result = MODEL.transcribe(wav_path, language=language)
-        return result.get("text", "")
+        result = get_model().transcribe(wav_path, language=language)
+        text = result.get("text", "")
+        if isinstance(text, list):
+            return " ".join(str(t) for t in text)
+        return str(text)
     finally:
         if os.path.exists(wav_path):
             os.remove(wav_path)

@@ -1,20 +1,18 @@
 import uuid
 from pathlib import Path
 from typing import Any
-
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
-
-from app.whisper_utils import process_audio
+from app.services.audio.core import process_audio
 
 router = APIRouter()
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+RECORDS_DIR = Path("records")
+RECORDS_DIR.mkdir(exist_ok=True)
 
 @router.post("/decode")
 async def transcribe(file: UploadFile = File(...), language: str = Form(...)) -> dict[str, Any]:
-    webm = UPLOAD_DIR / f"{uuid.uuid4().hex}.webm"
+    webm = RECORDS_DIR / f"{uuid.uuid4().hex}.webm"
 
     with open(webm, "wb") as f:
         f.write(await file.read())

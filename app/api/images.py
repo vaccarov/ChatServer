@@ -1,16 +1,17 @@
 import json
 import os
+import io
 from pathlib import Path
 from typing import Optional
-from app.constants import LCM_SDXL_MODEL, MODEL_LCM, MODEL_SDXL, MODELS_PATH, SDXL_BASE_MODEL, SDXL_REFINER_MODEL
-from app.forms import ImageGenerationForm
-from app.image_generation.core import generate_image
-from app.image_generation.utils import PIPELINE_CACHE
-from app.models import ImageGenerationRequest
+from app.core.constants import LCM_SDXL_MODEL, MODEL_LCM, MODEL_SDXL, MODELS_PATH, SDXL_BASE_MODEL
+from app.schemas.forms import ImageGenerationForm
+from app.services.image.core import generate_image
+from app.services.image.utils import PIPELINE_CACHE
+from app.schemas.models import ImageGenerationRequest
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 from PIL import Image
-import io
 
 router = APIRouter()
 
@@ -19,19 +20,22 @@ async def generate_image_endpoint(
     form: ImageGenerationForm = Depends(ImageGenerationForm),
     image: Optional[UploadFile] = File(None),
 ):
-    req = ImageGenerationRequest(**vars(form))
+    try:
+        req = ImageGenerationRequest(**vars(form))
+    except ValidationError as e:
+        error_messages = []
+        for err in e.errors():
+            if err['loc']:
+                field = err['loc'][0]
+                message = f"{field}: {err['msg']} (input_value={err.get('input')})"
+            else:
+                message = err['msg']
+            error_messages.append(message)
+        raise HTTPException(status_code=400, detail=". ".join(error_messages))
 
     if image:
         image_bytes = await image.read()
         req.input_image_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-
-    # Fixes wrong parameters
-    if req.model_name == MODEL_LCM:
-        req.use_refiner = False
-    if req.input_image_pil is not None:
-        req.batch_size = 1
-    else:
-        req.strength = None
 
     async def event_stream():
         try:

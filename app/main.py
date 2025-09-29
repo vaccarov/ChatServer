@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import image, transcript
+from app.api import images, audio
 
 app = FastAPI()
 app.add_middleware(
@@ -9,8 +9,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
-app.include_router(image.router, prefix="/image")
-app.include_router(transcript.router, prefix="/transcript")
+app.include_router(images.router, prefix="/image")
+app.include_router(audio.router, prefix="/audio")
 
 @app.get("/")
 async def health_check():

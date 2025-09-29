@@ -1,13 +1,12 @@
 from fastapi import Form
-from app.models import ImageGenerationRequest
-from PIL import Image
+from app.schemas.models import ImageGenerationRequest
 
 class ImageGenerationForm:
     def __init__(
         self,
         prompt: str = Form(...),
         model_name: str = Form(ImageGenerationRequest.model_fields['model_name'].default),
-        batch_size: int = Form(ImageGenerationRequest.model_fields['batch_size'].default),
+        num_images_per_prompt: int = Form(ImageGenerationRequest.model_fields['num_images_per_prompt'].default),
         steps: int = Form(ImageGenerationRequest.model_fields['steps'].default),
         strength: float | None = Form(None),
         negative_prompt: str | None = Form(None),
@@ -17,7 +16,7 @@ class ImageGenerationForm:
     ):
         self.prompt = prompt
         self.model_name = model_name
-        self.batch_size = batch_size
+        self.num_images_per_prompt = num_images_per_prompt
         self.steps = steps
         self.strength = strength
         self.negative_prompt = negative_prompt

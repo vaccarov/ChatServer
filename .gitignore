@@ -1,6 +1,5 @@
 .venv/
-uploads/
-images/
+data/
 __pycache__/
 .DS_Store
 .vscode/
