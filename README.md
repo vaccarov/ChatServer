@@ -11,6 +11,14 @@
 *   **Asynchronous by Design:** Offloads resource-intensive operations to a separate thread pool to keep the server responsive.
 *   **Dynamic Model Loading:** Image generation models are loaded on demand and cached for efficiency.
 
+## Generated Image Examples
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-around; gap: 1rem;">
+  <img src="images/sample1.png" width="300" alt="Generated Image 1">
+  <img src="images/sample2.png" width="300" alt="Generated Image 2">
+  <img src="images/sample3.png" width="300" alt="Generated Image 3">
+</div>
+
 ## Technologies Used
 
 *   **Python**
@@ -53,9 +61,9 @@
 
 The server exposes two main API groups: `/transcript` and `/image`.
 
-### Transcription API (`/transcript`)
+### Transcription API (`/audio`)
 
-#### `POST /transcript/transcribe`
+#### `POST /audio/decode`
 
 *   **Description:** Transcribes an audio file into text.
 *   **Form Parameters (`multipart/form-data`):
@@ -67,7 +75,7 @@ The server exposes two main API groups: `/transcript` and `/image`.
     curl -X POST \
       -F "file=@/path/to/your/audio.webm" \
       -F "language=english" \
-      http://127.0.0.1:8000/transcript/transcribe
+      http://127.0.0.1:8000/audio/decode
     ```
 
 ### Image Generation API (`/image`)

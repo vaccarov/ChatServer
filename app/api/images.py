@@ -56,8 +56,8 @@ async def get_models():
             MODEL_LCM: LCM_SDXL_MODEL,
         }
         model_patterns = {
-            name: str(cache_path / f"models--{model_id.replace('/', '--')}")
-            for name, model_id in model_info.items()
+            name: str(cache_path / f"models--{fullname.replace('/', '--')}")
+            for name, fullname in model_info.items()
         }
         available_models = [
             name for name, pattern in model_patterns.items() if os.path.exists(pattern)
@@ -65,7 +65,7 @@ async def get_models():
         loaded_model_names = {key.split('_')[0] for key in PIPELINE_CACHE.keys()}
         return [
             {
-                "model_id": model_info.get(model_name),
+                "fullname": model_info.get(model_name),
                 "name": model_name,
                 "loaded": model_name in loaded_model_names,
             }
