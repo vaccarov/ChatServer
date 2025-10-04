@@ -13,11 +13,16 @@
 
 ## Generated Image Examples
 
-<div style="display: flex; flex-wrap: wrap; justify-content: space-around; gap: 1rem;">
-  <img src="images/sample1.png" width="300" alt="Generated Image 1">
-  <img src="images/sample2.png" width="300" alt="Generated Image 2">
-  <img src="images/sample3.png" width="300" alt="Generated Image 3">
-</div>
+<table align="center">
+  <tr>
+    <td><img src="samples/sample1.png" width="400" alt="Generated Image 1"></td>
+    <td><img src="samples/sample2.png" width="400" alt="Generated Image 2"></td>
+  </tr>
+  <tr>
+    <td><img src="samples/sample3.png" width="400" alt="Generated Image 3"></td>
+    <td><img src="samples/sample4.png" width="400" alt="Generated Image 4"></td>
+  </tr>
+</table>
 
 ## Technologies Used
 

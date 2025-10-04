@@ -6,3 +6,4 @@ python-multipart # Form data requires "python-multipart" to be installed.
 diffusers
 transformers
 accelerate
+ruff

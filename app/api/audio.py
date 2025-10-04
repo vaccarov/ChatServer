@@ -7,20 +7,18 @@ from app.services.audio.core import process_audio
 
 router = APIRouter()
 
-RECORDS_DIR = Path("records")
+RECORDS_DIR = Path('data/records')
 RECORDS_DIR.mkdir(exist_ok=True)
 
-@router.post("/decode")
-async def transcribe(file: UploadFile = File(...), language: str = Form(...)) -> dict[str, Any]:
-    webm = RECORDS_DIR / f"{uuid.uuid4().hex}.webm"
 
-    with open(webm, "wb") as f:
-        f.write(await file.read())
-    try:
-        transcript = await run_in_threadpool(process_audio, webm, language)
-        return {"transcript": transcript}
-    except Exception as e:
-        print(f"An error occurred during transcription: {e}")
-        raise HTTPException(
-            status_code=500, detail="An error occurred during the transcription process."
-        )
+@router.post('/decode')
+async def transcribe(file: UploadFile = File(...), language: str = Form(...)) -> dict[str, Any]:
+	webm = RECORDS_DIR / f'{uuid.uuid4().hex}.webm'
+	with open(webm, 'wb') as f:
+		f.write(await file.read())
+	try:
+		transcript = await run_in_threadpool(process_audio, str(webm), language)
+		return {'transcript': transcript}
+	except Exception as e:
+		print(f'An error occurred during transcription: {e}')
+		raise HTTPException(status_code=500, detail='An error occurred during the transcription process.')
