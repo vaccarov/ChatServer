@@ -24,3 +24,9 @@ LCM_SDXL_MODEL = 'latent-consistency/lcm-sdxl'
 # Model Names
 MODEL_SDXL = 'sdxl'
 MODEL_LCM = 'lcm'
+
+# Ollama Constants
+OLLAMA_HOST = 'http://localhost:11434'
+
+# ChromaDB Constants
+CHROMA_PATH = 'db'

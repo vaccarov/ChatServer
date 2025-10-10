@@ -7,3 +7,9 @@ diffusers
 transformers
 accelerate
 ruff
+ollama
+chromadb
+langchain
+langchain-community
+pymupdf
+pytesseract
