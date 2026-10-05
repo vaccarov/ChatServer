@@ -1,5 +1,6 @@
-from typing import List, Optional
 from pydantic import BaseModel
+
+from app.core.constants import DEFAULT_LLM_BASE_URL
 
 
 class Document(BaseModel):
@@ -8,20 +9,13 @@ class Document(BaseModel):
 	content: str
 
 
-class DocumentListResponse(BaseModel):
-	documents: List[Document]
-
-
-class SearchRequest(BaseModel):
-	query: str
-	embedding_model: str
-	chat_id: Optional[str] = None
-
-
 class RagChatRequest(BaseModel):
 	query: str
 	embedding_model: str
-	chat_id: Optional[str] = None
+	chat_id: str | None = None
+	# Which server the ChatServer must call to turn text into vectors.
+	embedding_provider: str = 'ollama'
+	embedding_base_url: str = DEFAULT_LLM_BASE_URL
 
 
 class RagChatResponse(BaseModel):

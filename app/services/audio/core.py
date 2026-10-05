@@ -1,52 +1,25 @@
-import whisper
 import subprocess
-import os
-from typing import Optional
+from functools import lru_cache
 
-# ┌───────────────┬────────────┬────────────────────────┬──────────────────┐
-# │ Nom du modèle │ Paramètres │ VRAM requise (approx.) │ Vitesse relative │
-# ├───────────────┼────────────┼────────────────────────┼──────────────────┤
-# │ tiny          │ 39 M       │ ~1 GB                  │ ~32x             │
-# │ base          │ 74 M       │ ~1 GB                  │ ~16x             │
-# │ small         │ 244 M      │ ~2 GB                  │ ~6x              │
-# │ medium        │ 769 M      │ ~5 GB                  │ ~2x              │
-# │ large         │ 1550 M     │ ~10 GB                 │ 1x               │
-# └───────────────┴────────────┴────────────────────────┴──────────────────┘
-MODEL_NAME = 'large-v3-turbo'
-# ~/.cache/whisper/MODEL_NAME.pt
-MODEL: Optional['whisper.Whisper'] = None
+import whisper
+
+# Model size trade-offs are tabulated in the README.
+MODEL_NAME = 'large-v3-turbo'  # cached in ~/.cache/whisper/MODEL_NAME.pt
 
 
+@lru_cache(maxsize=1)
 def get_model() -> 'whisper.Whisper':
-	"""
-	Loads the Whisper model if it hasn't been loaded yet, and returns the model.
-	"""
-	global MODEL
-	if MODEL is None:
-		MODEL = whisper.load_model(MODEL_NAME)
-	return MODEL
+	"""Loads the Whisper model on first use and keeps it for the process lifetime."""
+	return whisper.load_model(MODEL_NAME)
 
 
-def convert_webm_to_wav(webm_path: str, wav_path: str) -> None:
+def process_audio(webm_path: str, language: str) -> str:
+	"""Converts a webm recording to wav and transcribes it. Caller owns the temp directory."""
+	wav_path = f'{webm_path}.wav'
 	subprocess.run(
 		['ffmpeg', '-y', '-i', webm_path, '-ar', '16000', '-ac', '1', wav_path],
 		stdout=subprocess.DEVNULL,
 		stderr=subprocess.DEVNULL,
 		check=True,
 	)
-
-
-def process_audio(webm_path: str, language: str) -> str:
-	wav_path = webm_path.replace('.webm', '.wav')
-	try:
-		convert_webm_to_wav(webm_path, wav_path)
-		result = get_model().transcribe(wav_path, language=language)
-		text = result.get('text', '')
-		if isinstance(text, list):
-			return ' '.join(str(t) for t in text)
-		return str(text)
-	finally:
-		if os.path.exists(wav_path):
-			os.remove(wav_path)
-		if os.path.exists(webm_path):
-			os.remove(webm_path)
+	return str(get_model().transcribe(wav_path, language=language).get('text', ''))

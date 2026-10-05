@@ -1,147 +1,135 @@
 # ChatServer
 
-`ChatServer` is a versatile FastAPI backend offering both audio-to-text transcription and advanced image generation capabilities. It is optimized for asynchronous processing of demanding tasks.
+`ChatServer` is the optional local backend for [OllamaChat](https://github.com/vaccarov/OllamaChat). FastAPI + Uvicorn, designed to keep heavy local models out of the browser.
 
 ## Features
 
-*   **Audio Transcription:** Converts audio files (e.g., WEBM, M4A, WAV) into text using OpenAI Whisper.
-*   **Multilingual Transcription:** Supports specifying the audio language for improved accuracy.
-*   **Text-to-Image Generation:** Creates images from textual descriptions using state-of-the-art models like SDXL and LCM.
-*   **Image-to-Image Transformation:** Modifies existing images based on a text prompt.
-*   **Asynchronous by Design:** Offloads resource-intensive operations to a separate thread pool to keep the server responsive.
-*   **Dynamic Model Loading:** Image generation models are loaded on demand and cached for efficiency.
-
-## Generated Image Examples
-
-<table align="center">
-  <tr>
-    <td><img src="samples/sample1.png" width="400" alt="Generated Image 1"></td>
-    <td><img src="samples/sample2.png" width="400" alt="Generated Image 2"></td>
-  </tr>
-  <tr>
-    <td><img src="samples/sample3.png" width="400" alt="Generated Image 3"></td>
-    <td><img src="samples/sample4.png" width="400" alt="Generated Image 4"></td>
-  </tr>
-</table>
-
-## Technologies Used
-
-*   **Python**
-*   **FastAPI:** High-performance web framework.
-*   **Uvicorn:** ASGI server for running the application.
-*   **OpenAI Whisper:** For speech recognition.
-*   **Diffusers Library:** For image generation pipelines.
-*   **FFmpeg:** For audio format conversion.
+- **Image generation & editing**: text-to-image and image-to-image with SDXL, LCM and an optional SDXL refiner, streamed as Server-Sent Events.
+- **Audio transcription**: WEBM/WAV/M4A to text with OpenAI Whisper.
+- **Text-to-speech**: VoxCPM synthesis, returned as a WAV stream.
+- **RAG over PDFs**: text extraction with PyMuPDF, OCR fallback with Tesseract, chunking, embeddings and ChromaDB vector search.
+- **Provider-agnostic embeddings**: works with Ollama's `/api/embed` *and* with any OpenAI-compatible `/v1/embeddings` server (LM Studio, llama.cpp, vLLM…).
+- **Async by design**: model inference runs on worker threads so the event loop stays responsive.
+- **Lazy model loading**: nothing is downloaded or loaded until the matching endpoint is used.
 
 ## Prerequisites
 
-*   **Python 3.9+**
-*   **FFmpeg:** `brew install ffmpeg`
+- **Python 3.14+** and [**uv**](https://docs.astral.sh/uv/)
+- **ffmpeg** — `brew install ffmpeg` (`apt install ffmpeg`)
+- **tesseract** — `brew install tesseract` (`apt install tesseract-ocr`), only needed for scanned PDFs
+- A running LLM server for embeddings: Ollama (default, `http://localhost:11434`) or an OpenAI-compatible one
 
-## Installation and Startup
+Image generation models are downloaded on first use into `~/.cache/huggingface/hub` (login with the [HuggingFace CLI](https://huggingface.co/docs/huggingface_hub/guides/cli) first). The Whisper model is cached in `~/.cache/whisper`.
 
-1.  **Navigate to the project directory:**
-    ```bash
-    cd ./ChatServer
-    ```
+The Whisper model is cached in `~/.cache/whisper`; pick a smaller one by editing `MODEL_NAME` in [`app/services/audio/core.py`](app/services/audio/core.py).
 
-2.  **Create and activate a virtual environment:**
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    ```
+| Whisper model | Params | VRAM (approx.) | Relative speed |
+| --- | --- | --- | --- |
+| `tiny` | 39 M | ~1 GB | ~32x |
+| `base` | 74 M | ~1 GB | ~16x |
+| `small` | 244 M | ~2 GB | ~6x |
+| `medium` | 769 M | ~5 GB | ~2x |
+| `large` | 1550 M | ~10 GB | 1x |
 
-3.  **Install Python dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+Disk usage: Whisper `large-v3-turbo` ≈ 1.6 GB, SDXL base ≈ 7.1 GB, SDXL refiner ≈ 4.7 GB, LCM ≈ 5.1 GB.
 
-4.  **Start the Uvicorn server:**
-    ```bash
-    uvicorn app.main:app --host 0.0.0.0 --reload
-    ```
-    The server will be accessible at `http://127.0.0.1:8000`.
+## Installation and startup
 
-## API Usage
+```bash
+uv sync
+uv run uvicorn app.main:app --host 0.0.0.0 --reload
+```
 
-The server exposes two main API groups: `/transcript` and `/image`.
+The server listens on `http://127.0.0.1:8000`.
 
-### Transcription API (`/audio`)
+## API
 
-#### `POST /audio/decode`
+### `GET /`
 
-*   **Description:** Transcribes an audio file into text.
-*   **Form Parameters (`multipart/form-data`):
-    *   `file` (type `File`): The audio file to transcribe.
-    *   `language` (type `Form`, `string`): The language of the audio (e.g., `"english"`, `"fr"`).
+Health check: `{"success": true}`.
 
-*   **Example (`curl`):**
-    ```bash
-    curl -X POST \
-      -F "file=@/path/to/your/audio.webm" \
-      -F "language=english" \
-      http://127.0.0.1:8000/audio/decode
-    ```
+### `POST /audio/decode`
 
-### Image Generation API (`/image`)
+Transcribes a recording.
 
-#### `POST /image/generate`
+| Field | Type | Description |
+| --- | --- | --- |
+| `file` | file | The audio file |
+| `language` | form string | Language of the audio, e.g. `fr` |
 
-*   **Description:** Generates or modifies an image. Returns a streaming response of progress events.
-*   Form Parameters (`multipart/form-data`):
-    *   `prompt` (`string`): The main text prompt describing the desired image.
-    *   `model_name` (`string`, optional): The generation model to use (`"sdxl"` or `"lcm"`). Defaults to `"sdxl"`.
-    *   `steps` (`int`, optional): Number of diffusion steps. Defaults to `25`.
-    *   `negative_prompt` (`string`, optional): Terms to exclude from the image.
-    *   `strength` (`float`, optional): Influence of the input image in image-to-image tasks (0.0 to 1.0).
-    *   `use_refiner` (`bool`, optional): Whether to use the SDXL refiner model.
-    *   `image` (`File`, optional): An input image for image-to-image generation.
+```bash
+curl -X POST -F "file=@audio.webm" -F "language=fr" http://127.0.0.1:8000/audio/decode
+```
 
-*   **Example (Text-to-Image):**
-    ```bash
-    curl -X POST \
-      -F "prompt=A futuristic cityscape at sunset" \
-      http://127.0.0.1:8000/image/generate
-    ```
+### `POST /image/generate`
 
-#### `GET /image/models`
+Generates or modifies an image. Returns a `text/event-stream` of progress events:
+`loading_model`, `generating`, `progress`, `starting_image`, `success`, `error`.
 
-*   **Description:** Lists available image generation models and their loaded status.
-*   **Example (`curl`):**
-    ```bash
-    curl -X GET http://127.0.0.1:8000/image/models
-    ```
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `prompt` | form string | — | Main prompt |
+| `model_name` | form string | `sdxl` | `sdxl` or `lcm` |
+| `steps` | form int | `25` | Diffusion steps |
+| `num_images_per_prompt` | form int | `1` | Images to generate (1 for image-to-image) |
+| `negative_prompt` | form string | – | Terms to exclude |
+| `strength` | form float | – | Image-to-image influence (0–1) |
+| `guidance_scale` | form float | – | Prompt adherence |
+| `denoising` | form float | – | Refiner denoising strength (0–1) |
+| `use_refiner` | form bool | – | Use the SDXL refiner (not with `lcm`) |
+| `image` | file | – | Input image for image-to-image |
 
-## Model Configuration
+```bash
+curl -X POST -F "prompt=A futuristic cityscape at sunset" http://127.0.0.1:8000/image/generate
+```
 
-### Transcription Model
+### `GET /image/models`
 
-The Whisper model (`large-v3-turbo`) is configured in `app/whisper_utils.py`. You can switch to a smaller model (e.g., `"medium"`, `"base"`) for faster performance if needed.
+Lists the image models present in the local HuggingFace cache and whether they are loaded.
 
-### Image Generation Models
+### `POST /documents/upload`
 
-The image generation models (SDXL, LCM) are defined in `app/constants.py`. Models are downloaded automatically on first use and cached in your home directory (e.g., `~/.cache/huggingface/hub/`).
+Uploads PDFs into a ChromaDB collection named after the embedding model. PDFs without a text layer fall back to OCR.
 
-## Model Disk Space Requirements
-Note: On the first run, the Whisper model (`large-v3-turbo`) will be automatically downloaded and cached in `~/.cache/whisper/`.
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `files` | files | — | One or more PDFs |
+| `embedding_model` | form string | — | Embedding model id, also used as the collection name |
+| `chat_id` | form string | – | Scope the documents to one chat |
+| `embedding_provider` | form string | `ollama` | `ollama` or anything else for OpenAI-compatible |
+| `embedding_base_url` | form string | `http://localhost:11434` | Base URL of the embedding server |
 
-Diffusion models will be downloaded on first run in `~/.cache/huggingface/hub` once you login using [HuggingFace CLI](https://huggingface.co/docs/huggingface_hub/guides/cli)
+### `GET /documents/list`
 
-*   **Transcription (Whisper large-v3-turbo):** ~1.62 GB
-*   **SDXL Base:** ~7.11 GB
-*   **SDXL Refiner:** ~4.69 GB
-*   **LCM LoRA:** ~5.14 GB
+Lists the unique documents in a collection. Optional `embedding_model` and `chat_id` query parameters.
 
-## Docker Container Information
+### `POST /documents/rag_chat`
 
-The size of the Docker image will be significant due to the inclusion of multiple large models.
+Embeds the query, retrieves the 5 closest chunks and returns the augmented prompt.
 
-*   With the **`tiny`** Whisper model, the image size is approximately **1.97 GB**.
-*   With the **`large-v3`** Whisper model and image generation libraries, the size can exceed **10 GB**.
+```json
+{
+  "query": "What is the mitochondria?",
+  "embedding_model": "nomic-embed-text",
+  "chat_id": "optional-session-id",
+  "embedding_provider": "ollama",
+  "embedding_base_url": "http://localhost:11434"
+}
+```
 
-### Building the Docker Image
+### `POST /tts`
+
+Synthesises speech with VoxCPM and returns `audio/wav`.
+
+```json
+{ "text": "Hello there" }
+```
+
+## Docker
 
 ```bash
 docker build -t chatserver .
 docker run -d -p 8000:8000 --name chatserver-container chatserver
 ```
+
+The image is large: it includes Python, ffmpeg, tesseract, PyTorch and the diffusion stack. Model weights are still downloaded at runtime, so mount a volume for `~/.cache` if you want them to persist.

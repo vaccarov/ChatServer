@@ -1,43 +1,40 @@
-import json
-import os
 import io
+import json
 from pathlib import Path
-from typing import Optional
-from app.core.constants import LCM_SDXL_MODEL, MODEL_LCM, MODEL_SDXL, MODELS_PATH, SDXL_BASE_MODEL
-from app.schemas.forms import ImageGenerationForm
-from app.services.image.core import generate_image
-from app.services.image.utils import PIPELINE_CACHE
-from app.schemas.models import ImageGenerationRequest
+from collections.abc import AsyncIterator
+from typing import Annotated, Any
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
 from PIL import Image
+from pydantic import ValidationError
+
+from app.core.constants import LCM_SDXL_MODEL, MODEL_LCM, MODEL_SDXL, MODELS_PATH, SDXL_BASE_MODEL
+from app.schemas.forms import ImageGenerationForm
+from app.schemas.models import ImageGenerationRequest
+from app.services.image.core import generate_image
+from app.services.image.utils import PIPELINE_CACHE
 
 router = APIRouter()
 
 
 @router.post('/generate')
 async def generate_image_endpoint(
-	form: ImageGenerationForm = Depends(ImageGenerationForm), image: Optional[UploadFile] = File(None)
+	form: Annotated[ImageGenerationForm, Depends(ImageGenerationForm)],
+	image: Annotated[UploadFile | None, File()] = None,
 ):
-	try:
-		req = ImageGenerationRequest(**vars(form))
-	except ValidationError as e:
-		error_messages = []
-		for err in e.errors():
-			if err['loc']:
-				field = err['loc'][0]
-				message = f'{field}: {err["msg"]} (input_value={err.get("input")})'
-			else:
-				message = err['msg']
-			error_messages.append(message)
-		raise HTTPException(status_code=400, detail='. '.join(error_messages))
-
+	payload: dict[str, Any] = vars(form)
 	if image:
-		image_bytes = await image.read()
-		req.input_image_pil = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+		payload['input_image_pil'] = Image.open(io.BytesIO(await image.read())).convert('RGB')
+	try:
+		req = ImageGenerationRequest.model_validate(payload)
+	except ValidationError as e:
+		# `include_input=False`: the payload holds a PIL image, which is not JSON serialisable.
+		raise HTTPException(
+			status_code=422, detail=e.errors(include_input=False, include_url=False, include_context=False)
+		)
 
-	async def event_stream():
+	async def event_stream() -> AsyncIterator[str]:
 		try:
 			async for progress in generate_image(req):
 				yield f'data: {json.dumps(progress)}\n\n'
@@ -53,14 +50,11 @@ async def get_models():
 	try:
 		cache_path = Path(MODELS_PATH).expanduser()
 		model_info = {MODEL_SDXL: SDXL_BASE_MODEL, MODEL_LCM: LCM_SDXL_MODEL}
-		model_patterns = {
-			name: str(cache_path / f'models--{fullname.replace("/", "--")}') for name, fullname in model_info.items()
-		}
-		available_models = [name for name, pattern in model_patterns.items() if os.path.exists(pattern)]
-		loaded_model_names = {key.split('_')[0] for key in PIPELINE_CACHE.keys()}
+		loaded_model_names = {key.split('_')[0] for key in PIPELINE_CACHE}
 		return [
-			{'fullname': model_info.get(model_name), 'name': model_name, 'loaded': model_name in loaded_model_names}
-			for model_name in available_models
+			{'fullname': fullname, 'name': name, 'loaded': name in loaded_model_names}
+			for name, fullname in model_info.items()
+			if (cache_path / f'models--{fullname.replace("/", "--")}').exists()
 		]
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
