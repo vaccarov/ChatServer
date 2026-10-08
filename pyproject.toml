@@ -5,6 +5,7 @@ description = "Local backend for OllamaChat: image generation, transcription, TT
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "accelerate>=1.13.0",
     "chromadb>=1.5.5",
     "diffusers>=0.37.0",
     "fastapi>=0.135.1",
@@ -12,12 +13,12 @@ dependencies = [
     "langchain-community>=0.4.1",
     "langchain-core>=1.2.20",
     "langchain-text-splitters>=1.1.1",
-    "ollama>=0.6.1",
     "openai-whisper>=20250625",
     "pillow>=11.0.0",
     "pymupdf>=1.27.2.2",
     "pytesseract>=0.3.13",
     "python-multipart>=0.0.22",
+    "soundfile>=0.14.0",
     "torch>=2.10.0",
     "uvicorn[standard]>=0.42.0",
     "voxcpm>=1.5.0",
@@ -28,6 +29,11 @@ dev = ["ruff>=0.15.7"]
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
+# Ruff 0.16 widened its default rule set (B, BLE, I, UP, ...). Pin the previous
+# defaults so a linter bump cannot silently change what CI treats as an error.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.ruff.format]
 quote-style = "single"

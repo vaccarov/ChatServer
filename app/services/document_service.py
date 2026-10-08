@@ -3,7 +3,7 @@ import tempfile
 from typing import Any
 
 import chromadb
-import fitz
+import pymupdf
 import pytesseract
 from fastapi import HTTPException, UploadFile
 from langchain_community.document_loaders import PyMuPDFLoader
@@ -30,7 +30,7 @@ def _extract_pdf_documents(path: str, filename: str) -> list[LangchainDocument]:
 
 	print(f'No text found in {filename} via direct extraction. Attempting OCR...')
 	ocr_text = ''
-	with fitz.open(path) as pdf_document:
+	with pymupdf.open(path) as pdf_document:
 		for page in pdf_document:
 			image = Image.open(io.BytesIO(page.get_pixmap().pil_tobytes(format='PNG')))
 			ocr_text += pytesseract.image_to_string(image)

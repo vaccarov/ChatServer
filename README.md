@@ -19,9 +19,7 @@
 - **tesseract** — `brew install tesseract` (`apt install tesseract-ocr`), only needed for scanned PDFs
 - A running LLM server for embeddings: Ollama (default, `http://localhost:11434`) or an OpenAI-compatible one
 
-Image generation models are downloaded on first use into `~/.cache/huggingface/hub` (login with the [HuggingFace CLI](https://huggingface.co/docs/huggingface_hub/guides/cli) first). The Whisper model is cached in `~/.cache/whisper`.
-
-The Whisper model is cached in `~/.cache/whisper`; pick a smaller one by editing `MODEL_NAME` in [`app/services/audio/core.py`](app/services/audio/core.py).
+Image generation models are downloaded on first use into `~/.cache/huggingface/hub` (login with the [HuggingFace CLI](https://huggingface.co/docs/huggingface_hub/guides/cli) first). The Whisper model is cached in `~/.cache/whisper` — pick a smaller one by editing `MODEL_NAME` in [`app/services/audio/core.py`](app/services/audio/core.py).
 
 | Whisper model | Params | VRAM (approx.) | Relative speed |
 | --- | --- | --- | --- |
@@ -31,7 +29,9 @@ The Whisper model is cached in `~/.cache/whisper`; pick a smaller one by editing
 | `medium` | 769 M | ~5 GB | ~2x |
 | `large` | 1550 M | ~10 GB | 1x |
 
-Disk usage: Whisper `large-v3-turbo` ≈ 1.6 GB, SDXL base ≈ 7.1 GB, SDXL refiner ≈ 4.7 GB, LCM ≈ 5.1 GB.
+VoxCPM is downloaded on the first `POST /tts` call, together with its ZipEnhancer denoiser (from ModelScope). That first call also runs a `torch.compile` warm-up, so expect it to take a while. The model id is in [`app/api/tts.py`](app/api/tts.py) — it defaults to `openbmb/VoxCPM2` (30 languages); `openbmb/VoxCPM-0.5B` is smaller but speaks English and Chinese only.
+
+Disk usage: Whisper `large-v3-turbo` ≈ 1.6 GB, SDXL base ≈ 7.1 GB, SDXL refiner ≈ 4.7 GB, LCM ≈ 5.1 GB, VoxCPM2 ≈ 5 GB.
 
 ## Installation and startup
 
